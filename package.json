@@ -4,6 +4,7 @@
   "description": "Wrap a sweet jsonp filling in a savoury superagent wrapper",
   "main": "index.js",
   "dependencies": {
+    "lodash": "^3.6.0",
     "superagent": "^0.21.0"
   },
   "devDependencies": {},

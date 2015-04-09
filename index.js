@@ -1,6 +1,6 @@
-if(typeof _ === 'undefined'){
-  var _ = require('underscore');
-}
+'use strict';
+
+var _ = require('lodash');
 
 var serialise = function(obj) {
   if (!_.isObject(obj)) return obj;
@@ -8,49 +8,53 @@ var serialise = function(obj) {
   for (var key in obj) {
     if (null != obj[key]) {
       pairs.push(encodeURIComponent(key)
-        + '=' + encodeURIComponent(obj[key]));
+      + '=' + encodeURIComponent(obj[key]));
     }
   }
   return pairs.join('&');
 }
 
 // Prefer node/browserify style requires
-if(typeof module !== 'undefined' && typeof module.exports !== 'undefined'){
-  module.exports = function(superagent) {
-    var Request = superagent.Request;
+module.exports = function(superagent) {
+  var Request = superagent.Request;
 
-    Request.prototype.jsonp = jsonp;
-    Request.prototype.end = end;
+  Request.prototype.jsonp = jsonp;
+  Request.prototype.end = end;
 
-    return superagent;
-  };
-} else if (typeof window !== 'undefined'){
-  window.superagentJSONP = jsonp;
-}
+  return superagent;
+};
 
 var jsonp = function(options){
-	var options = options || {};
-	this.options = _.defaults(options, { callbackName : 'cb' });
-	this.callbackName = 'superagentCallback' + new Date().valueOf() + parseInt(Math.random() * 1000);
+  var options = options || {};
+  this.options = _.defaults(options, { callbackName : 'cb' });
+  this.callbackName = 'superagentCallback' + new Date().valueOf() + parseInt(Math.random() * 1000);
 
+  window[this.callbackName] = function(data){
+    this.callback.apply(this, [data]);
+  }.bind(this);
 
-	window[this.callbackName] = function(data){
-		this.callback.apply(this, [data]);
-	}.bind(this);
-
-	return this;
+  return this;
 };
 
 var end = function(callback){
-	this.callback = callback;
+  this.callback = callback;
+  var params = {},
+    paramName = this.options.paramName || 'callback';
 
-	this._query.push(serialise({ callback : this.callbackName }));
-	var queryString = this._query.join('&');
+  params[paramName] = this.callbackName;
 
-	var s = document.createElement('script');
-	var url = this.url + '?' + queryString;
+  this._query.push(serialise(params));
 
-	s.src = url;
+  var queryString = this._query.join('&');
+  var s = document.createElement('script');
+  var separator = '?';
+  if (this.url.indexOf('?') !== -1) {
+    separator = '&';
+  }
 
-	document.getElementsByTagName('head')[0].appendChild(s);
+  var url = this.url + separator + queryString;
+
+  s.src = url;
+
+  document.getElementsByTagName('head')[0].appendChild(s);
 };
